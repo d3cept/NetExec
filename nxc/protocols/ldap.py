@@ -152,7 +152,7 @@ class ldap(connection):
         self.bootkey = None
         self.signing_required = None
         self.cbt_status = None
-        self.auth_choice = "sasl" if not args.simple_bind else "simple"
+        self.auth_choice = "sicilyNegotiate" if args.ldap_proxy else ("sasl" if not args.simple_bind else "simple")
         self.admin_privs = False
         self.no_ntlm = False
         self.sid_domain = ""
@@ -177,7 +177,7 @@ class ldap(connection):
             ldap_url = f"{proto}://{self.host}"
             self.logger.info(f"Connecting to {ldap_url} with no baseDN")
 
-            self.ldap_connection = ldap_impacket.LDAPConnection(ldap_url, dstIp=self.host)
+            self.ldap_connection = ldap_impacket.LDAPConnection(ldap_url, dstIp=self.host, signing=False if self.args.ldap_proxy else True)
             if self.ldap_connection:
                 self.logger.debug(f"ldap_connection: {self.ldap_connection}")
         except SysCallError as e:
@@ -217,10 +217,13 @@ class ldap(connection):
 
     def check_ldap_signing(self):
         self.signing_required = False
+        if self.args.ldap_proxy:
+            self.logger.debug("No LDAP signing protections since using LDAP SOCKS proxy")
+            return
         ldap_url = f"ldap://{self.target}"
         try:
             ldap_connection = ldap_impacket.LDAPConnection(url=ldap_url, baseDN=self.baseDN, dstIp=self.host, signing=False)
-            ldap_connection.login(domain=self.domain)
+            ldap_connection.login(domain=self.domain, authenticationChoice='sicilyPackageDiscovery' if self.args.ldap_proxy else None)
             self.logger.debug(f"LDAP signing is not enforced on {self.host}")
         except ldap_impacket.LDAPSessionError as e:
             if str(e).find("strongerAuthRequired") >= 0:
@@ -231,6 +234,9 @@ class ldap(connection):
 
     def check_ldaps_cbt(self):
         self.cbt_status = "Never"
+        if self.args.ldap_proxy:
+            self.logger.debug("No LDAPS signing protections since using LDAPS SOCKS proxy")
+            return
         ldap_url = f"ldaps://{self.target}"
         try:
             ldap_connection = ldap_impacket.LDAPConnection(url=ldap_url, baseDN=self.baseDN, dstIp=self.host)
@@ -267,6 +273,11 @@ class ldap(connection):
         target_domain = ""
         base_dn = ""
         try:
+            if self.args.ldap_proxy:
+                self.domain = self.args.domain
+                self.username = self.args.username[0]
+                self.password = 'proxy'
+                self.ldap_connection.login(self.username, self.password, self.domain, authenticationChoice='sicilyNegotiate')
             resp = self.ldap_connection.search(
                 scope=ldapasn1_impacket.Scope("baseObject"),
                 attributes=["dnsHostName", "defaultNamingContext", "configurationNamingContext", "rootDomainNamingContext"],
@@ -524,7 +535,7 @@ class ldap(connection):
             proto = "ldaps" if self.port == 636 else "ldap"
             ldap_url = f"{proto}://{self.target}"
             self.logger.info(f"Connecting to {ldap_url} - {self.baseDN} - {self.host} [3]")
-            self.ldap_connection = ldap_impacket.LDAPConnection(url=ldap_url, baseDN=self.baseDN, dstIp=self.host, signing=self.auth_choice != "simple")
+            self.ldap_connection = ldap_impacket.LDAPConnection(url=ldap_url, baseDN=self.baseDN, dstIp=self.host, signing=self.auth_choice == "sasl")
             self.ldap_connection.login(self.username, self.password, self.domain, self.lmhash, self.nthash, authenticationChoice=self.auth_choice)
             self.check_if_admin()
             self.logger.debug(f"Adding credential: {domain}/{self.username}:{self.password}")
