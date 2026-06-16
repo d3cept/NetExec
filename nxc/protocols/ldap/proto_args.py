@@ -9,6 +9,7 @@ def proto_args(parser, parents):
     dgroup.add_argument("--simple-bind", action="store_true", help="Use simple bind authentication (no signing/sealing)")
     ldap_parser.add_argument("--port", type=int, default=389, action=DefaultTrackingAction, help="LDAP port")
     ldap_parser.add_argument("-d", metavar="DOMAIN", dest="domain", type=str, default=None, help="domain to authenticate to")
+    ldap_parser.add_argument("--proxy", dest="ldap_proxy", action="store_true", help="Connect through LDAP relay SOCKS proxy (specify when using proxychains)")
 
     egroup = ldap_parser.add_argument_group("Retrieve hash on the remote DC", "Options to get hashes from Kerberos")
     egroup.add_argument("--asreproast", help="Output AS_REP response to crack with hashcat to file")
