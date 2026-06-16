@@ -56,8 +56,7 @@ class NXCModule:
         if "PASSWORD" in module_options:
             self.computer_password = module_options["PASSWORD"]
         elif not self.delete:
-            context.log.error("PASSWORD option is required!")
-            sys.exit(1)
+            self.computer_password = ""
 
     def on_login(self, context, connection):
         self.context = context
@@ -257,7 +256,7 @@ class NXCModule:
                     "userAccountControl": 0x1000,
                     "servicePrincipalName": spns,
                     "sAMAccountName": self.computer_name,
-                    "unicodePwd": f'"{self.computer_password}"'.encode("utf-16-le"),
+                    **({"unicodePwd": f'"{self.computer_password}"'.encode("utf-16-le")} if self.computer_password != "" else {}),
                 },
             )
             self.context.log.highlight(f'Successfully added "{self.computer_name}" with password "{self.computer_password}"')
