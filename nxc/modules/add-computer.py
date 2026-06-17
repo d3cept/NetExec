@@ -25,13 +25,15 @@ class NXCModule:
         """
         add-computer: Adds, deletes, or changes the password of a domain computer account.
         Uses SAMR when invoked with nxc smb.
+        Works over LDAP when password is not set (results in creation with blank password "")
 
         NAME        Computer name (required). Trailing '$' is added automatically.
-        PASSWORD    Computer password (required for add/changepw).
+        PASSWORD    Computer password (required for changepw).
         DELETE      Set to delete the computer account.
         CHANGEPW    Set to change an existing computer's password.
 
         Usage (same syntax for ldap):
+            nxc smb  $DC-IP -u Username -p Password -M add-computer -o NAME="BADPC"
             nxc smb  $DC-IP -u Username -p Password -M add-computer -o NAME="BADPC" PASSWORD="Password1"
             nxc smb  $DC-IP -u Username -p Password -M add-computer -o NAME="BADPC" DELETE=True
             nxc smb  $DC-IP -u Username -p Password -M add-computer -o NAME="BADPC" PASSWORD="Password2" CHANGEPW=True
@@ -56,6 +58,7 @@ class NXCModule:
         if "PASSWORD" in module_options:
             self.computer_password = module_options["PASSWORD"]
         elif not self.delete:
+            context.log.debug("Creating computer account with blank password")
             self.computer_password = ""
 
     def on_login(self, context, connection):
